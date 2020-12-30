@@ -18,6 +18,29 @@ class Rectangle:
     def perimeter(self) -> float:
         return 2 * (self.rect_x + self.rect_y)
 
+    def pairedPerimeter(self, rect: Rectangle):
+
+        x_min1 = min(self.x_min, rect.x_min)
+        y_min1 = min(self.y_min, rect.y_min)
+        x_max1 = max(self.x_max, rect.x_max)
+        y_max1 = max(self.y_max, rect.y_max)
+        
+        return 2 * ((x_max1 - x_min1) + (y_max1 - y_min1))
+        
+
+    def isRectSmallerThan(self, rect: Rectangle):
+        if self.x_max < rect.x_min:
+            return True
+        elif self.x_max < rect.x_min:
+            return False
+        else:
+            if self.y_max < rect.y_max:
+                return True
+            else:
+                return False
+
+
+
     #returns the area the rectangle covers
     def area(self) -> float:
         return self.rect_x * self.rect_y
