@@ -4,38 +4,92 @@ from rectangle import Rectangle
 MAX_ENTRIES = 2
 global z_var
     
-class TreeNode():
+from rectangle import Rectangle
 
-    def __init__ (self, parent: TreeDataBlock, blocks: TreeDataBlock[MAX_ENTRIES + 1]):
-        self.blocks = blocks
-        self.parent = parent
+class Rtree():
 
-    #if Node is not a parent, it means it is the root, so if self.parent != NULL then it is not the root Node.
-    @property
-    def is_root(self):
-        if self.parent:
-            return False
-        return True
+    RtreeData: list = None
 
-class TreeDataBlock():
+    def __init__(self,RtreeRoot):
+        self.RtreeRoot = RtreeRoot
 
-    def __init__ (self, rect: Rectangle, child: TreeNode, data: int, contained_node: TreeNode):
+    def addNode(self,RtreeNode):
+        Rtree.RtreeData.append(RtreeNode)
+    
+    def deleteNode(self,RtreeNode):
+        Rtree.RtreeData.pop(RtreeNode)
+
+    @classmethod
+    def treeLength(cls):
+        pass
+
+
+class RtreeBlock():
+
+    def __init__(self, rect: Rectangle, data, contained_node):
         self.rect = rect
-        self.child = child
         self.data = data
-        self.contained_node = contained_node
+        self.contained_node = None
 
-    def is_pointer (self):
-        if self.child:
+    def setContainedNode(self, Node):
+        self.contained_node = None
+
+    def containedNode(self):
+        return self.contained_node
+
+
+
+class RtreeNode():
+
+    def __init__(self, blocks: list, parent: RtreeBlock, level: int):
+        self.blocks = None
+        self.parent = parent
+        self.level = level
+
+    def is_root(self):
+        if self.parent == None:
             return True
-        return False
-
-    #if Block does not have a child, it means its a leaf node, so if self.child != NULL then it is not a leaf Block.
-    def is_leaf (self):
-        if self.child:
+        else:
             return False
-        return True
 
+    def set_new_level(self, new_level):
+        self.level = new_level
+
+
+
+# class TreeDataBlock():
+
+#     def __init__ (self, rect: Rectangle, child: TreeNode, data: int, contained_node: TreeNode):
+#         self.rect = rect
+#         self.child = child
+#         self.data = data
+#         self.contained_node = contained_node
+
+#     def is_pointer (self):
+#         if self.child:
+#             return True
+#         return False
+
+#     #if Block does not have a child, it means its a leaf node, so if self.child != NULL then it is not a leaf Block.
+#     def is_leaf (self):
+#         if self.child:
+#             return False
+#         return True
+
+# class TreeNode():
+
+#     def __init__ (self, parent: TreeDataBlock, blocks: TreeDataBlock):
+#         self.blocks = blocks
+#         self.parent = parent
+
+#     #if Node is not a parent, it means it is the root, so if self.parent != NULL then it is not the root Node.
+#     @property
+#     def is_root(self):
+#         if self.parent:
+#             return False
+#         return True
+
+    
 
 
 #TreeNode contains the blocks of the r-tree. Each block has a child of type TreeNode. Also each Node has a parent
@@ -117,12 +171,6 @@ def minRectExpansion(nodeVar: TreeNode, blockVar: TreeDataBlock):
 
 
 
-def swap(x: int, y: int):
-    k = 0
-    k = x
-    x = y
-
-
 
 
 #always use the root node for this algorithm to work. From the root 
@@ -130,4 +178,3 @@ def swap(x: int, y: int):
 
 
 
-    
