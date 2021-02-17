@@ -26,7 +26,7 @@ class Rectangle:
 
 
     #the union perimeter of two rectangles
-    def pairedPerimeter(self, rect: Rectangle):
+    def pairedPerimeter(self, rect):
 
         x_min1 = min(self.x_min, rect.x_min)
         x_max1 = max(self.x_max, rect.x_max)
@@ -37,7 +37,7 @@ class Rectangle:
         
 
 
-    def isRectSmallerThan(self, rect: Rectangle):
+    def isRectSmallerThan(self, rect):
         if self.x_max < rect.x_min:
             return True
         elif self.x_max < rect.x_min:
@@ -69,7 +69,7 @@ class Rectangle:
 
     #function that defines the space needed for the rectangle to expand
     #in order to fit in the new Data entry
-    def spaceNeeded(self, rect: Rectangle):
+    def spaceNeeded(self, rect):
         x_min_diff = abs(self.x_min - rect.x_min)
         x_max_diff = abs(self.x_max - rect.x_max)
         y_mix_diff = abs(self.y_min - rect.y_min)

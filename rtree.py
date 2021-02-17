@@ -6,7 +6,7 @@ MAX_VALUE = 488663658200000
 
 class RtreeBlock():
 
-    def __init__(self, rect: Rectangle, data, contained_node):
+    def __init__(self, rect: Rectangle, data: str, contained_node):
         self.rect = rect
         self.data = data
         self.contained_node = None
@@ -28,10 +28,11 @@ class RtreeBlock():
 
 class RtreeNode():
 
-    def __init__(self, blocks: list, parent: RtreeBlock, level: int):
+    def __init__(self, parent: RtreeBlock, level: int, indexPosition: int):
         self.blocks = []
         self.parent = parent
         self.level = level
+        self.indexPosition = 0
 
     def is_root(self):
         if self.parent == None:
@@ -42,6 +43,9 @@ class RtreeNode():
     def set_new_level(self, new_level):
         self.level = new_level
 
+    def setIndexPosition(self, position: int):
+        self.indexPosition = position
+
 
 
 
@@ -51,17 +55,28 @@ class Rtree():
 
     def __init__(self,RtreeRoot: RtreeNode):
         self.RtreeRoot = RtreeRoot
+        self.RtreeRoot.setIndexPosition(0)
         Rtree.RtreeData.append(RtreeRoot)
 
     def addNode(self,RtreeNode: RtreeNode):
+        listLenght = len(self.RtreeData)
+        RtreeNode.setIndexPosition(listLenght - 1)
         Rtree.RtreeData.append(RtreeNode)
     
-    def deleteNode(self,node: RtreeNode):
-        Rtree.RtreeData.pop(Rtree.RtreeData.index(node))
+    def deleteNode(self,nodeLocation: int):
+        position = nodeLocation
+        listLenght = len(self.RtreeData)
+        for counter in range(nodeLocation, listLenght):
+            self.RtreeData[counter].setIndexPosition(position - 1) 
+            position += 1
+        self.RtreeData.pop(nodeLocation)
 
 
     @classmethod
     def changeRoot(self, newRootNode: RtreeNode):
+        listLenght = len(self.RtreeData)
+        self.RtreeData[0].setIndexPosition(listLenght)
+        newRootNode.setIndexPosition(0)
         oldRootNode = self.RtreeData[0]
         Rtree.RtreeData.append(oldRootNode)
         Rtree.RtreeData.insert(0, newRootNode)
@@ -70,6 +85,71 @@ class Rtree():
     def treeLength(cls):
         pass
 
+
+
+def deleteBlock(rtree: Rtree, block: RtreeBlock):
+
+    #finding in which node the block is located
+    nodeLocation = 0
+    blockLocation = 0
+
+    blockLocation, nodeLocation = searchBlock(rtree, block, 2)
+
+    rtree.RtreeData[nodeLocation].blocks.pop(blockLocation)
+
+    if rtree.RtreeData[nodeLocation].blocks == []:
+        rtree.deleteNode(nodeLocation)
+    
+
+#searchBlock algorithm. If searchType is 1, we are searching by data
+# and the algorithm searches the blocks one by one to find it.
+#if searchType is 2, we are searching by rectange size, and we choose 
+#which node to search accordingly. 
+#id searchType is 0 searchBlock exits with 0 error code. The same happens if the root node is empty. 
+#searchBlock returns 2, if the value is not found.
+# Most times we will be using the 2nd method, the first is not recommended.
+def searchBlock(rtree: Rtree, block: RtreeBlock, searchType: int):
+
+    if searchType == 0 or rtree.RtreeRoot.blocks == []: 
+        return 0
+
+    data = block.data
+    rect = block.rect
+
+
+    if searchType == 1:
+        for nodeSelected in rtree.RtreeData:
+            for blockSelected in nodeSelected.blocks:
+                if blockSelected.data == data:
+                    return blockSelected.index, rtree.RtreeData.index
+
+        return 2
+
+    if searchType == 2:
+
+        nodeSelected = rtree.RtreeRoot
+        selectedBlock: RtreeBlock = None
+        spaceDifference = MAX_VALUE
+
+        while nodeSelected.blocks[0].is_leaf == False:
+            for blockVar in nodeSelected.blocks:
+                x = blockVar.rect.spaceNeeded(rect)
+                if x < spaceDifference:
+                    spaceDifference = x
+                    selectedBlock = blockVar
+                
+            #parent node selected and checks if it is NULL    
+            nodeSelected = selectedBlock.child
+            if nodeSelected.blocks == []:
+                return 2
+
+        if nodeSelected.blocks[0].is_leaf == True:
+            for blockVar in nodeSelected:
+                if blockVar.rect == rect:
+                    return blockVar.index, selectedBlock.indexPosition
+            return 2
+        else:
+            return 0
 
 
 
@@ -81,15 +161,13 @@ def insertBlock(rtree: Rtree, block: RtreeBlock):
     selectedNode: RtreeNode = None
 
     selectedNode = chooseLeaf(rtree, block)
-
-    while len(selectedNode.blocks) > MAX_ENTRIES:
-
+    
+    while len(selectedNode.blocks) < MAX_ENTRIES:
         if selectedNode == rootNode:
+            selectedNode.blocks.append(block)
             break
-
         quadraticSplit(rtree,selectedNode)
         selectedNode = selectedNode.parent.contained_node
-
 
     if selectedNode == rootNode and len(selectedNode.blocks) > MAX_ENTRIES:
         newRootCreation(rtree, selectedNode, block)
@@ -136,7 +214,7 @@ def newRootCreation(rtree: Rtree, rootNode: RtreeNode, block: RtreeBlock):
 
 
     #creating new root node
-    newRootNode: RtreeNode(None, None, 0)
+    newRootNode: RtreeNode(None, 0, 0)
     newRect: Rectangle(0,0,0,0)
     newBlock: RtreeBlock(newRect,"blockName", newRootNode)
     newBlock2: RtreeBlock(newRect,"blockName", newRootNode)
@@ -157,13 +235,13 @@ def newRootCreation(rtree: Rtree, rootNode: RtreeNode, block: RtreeBlock):
 
 def chooseLeaf(rtree: Rtree, block: RtreeBlock):
 
-    selectedNode: RtreeBlock = None
+    selectedNode: RtreeNode = None #or block?
 
     #First case that the root is still empty
     if len(rtree.RtreeRoot.blocks) == 0:
         selectedNode = rtree.RtreeRoot
         return selectedNode
-
+    print('skata')
     minSpaceNeeded = MAX_VALUE
     nodeSelected = rtree.RtreeRoot
     #while loop checks where we can place the new object in order to create the smallest rectangle.
