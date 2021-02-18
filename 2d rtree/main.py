@@ -11,5 +11,10 @@ newTree = Rtree(node)
 
 insertBlock(newTree, testBlock)
 
-print(node.blocks[0].data)
+print(newTree.RtreeData[0].blocks[0].data)
+
+deleteBlock(newTree,testBlock)
+
+insertBlock(newTree, testBlock)
+
 print(newTree.RtreeData[0].blocks[0].data)

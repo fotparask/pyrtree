@@ -1,4 +1,5 @@
 from rectangle import Rectangle
+import sys
 
 MAX_ENTRIES = 2
 MAX_VALUE = 488663658200000
@@ -66,9 +67,6 @@ class Rtree():
     def deleteNode(self,nodeLocation: int):
         position = nodeLocation
         listLenght = len(self.RtreeData)
-        for counter in range(nodeLocation, listLenght):
-            self.RtreeData[counter].setIndexPosition(position - 1) 
-            position += 1
         self.RtreeData.pop(nodeLocation)
 
 
@@ -92,26 +90,47 @@ def deleteBlock(rtree: Rtree, block: RtreeBlock):
     #finding in which node the block is located
     nodeLocation = 0
     blockLocation = 0
+    indexPositions = [nodeLocation,blockLocation]
 
-    blockLocation, nodeLocation = searchBlock(rtree, block, 2)
+    indexPositions = searchBlock(rtree, block, 2)
+    nodeLocation = indexPositions[0]
+    blockLocation = indexPositions[1]
+    
+    if nodeLocation is None:
+        sys.exit('Could not delete block object. Program tried to delete root block.')
 
-    rtree.RtreeData[nodeLocation].blocks.pop(blockLocation)
+
+    rtree.deleteNode(nodeLocation) 
+
+    print("Block has been deleted")
+    if rtree.RtreeData == []:
+        return
 
     if rtree.RtreeData[nodeLocation].blocks == []:
         rtree.deleteNode(nodeLocation)
+
+    
+
+        
+
+    
     
 
 #searchBlock algorithm. If searchType is 1, we are searching by data
 # and the algorithm searches the blocks one by one to find it.
 #if searchType is 2, we are searching by rectange size, and we choose 
 #which node to search accordingly. 
-#id searchType is 0 searchBlock exits with 0 error code. The same happens if the root node is empty. 
+#if searchType is 0 searchBlock exits with 0 error code. The same happens if the root node is empty. 
 #searchBlock returns 2, if the value is not found.
 # Most times we will be using the 2nd method, the first is not recommended.
 def searchBlock(rtree: Rtree, block: RtreeBlock, searchType: int):
 
-    if searchType == 0 or rtree.RtreeRoot.blocks == []: 
-        return 0
+    indexPositions = [0, 0]
+    counter = 0
+
+    if searchType == 0 or len(rtree.RtreeRoot.blocks) == 0: 
+        indexPositions = [None, None]
+        return indexPositions
 
     data = block.data
     rect = block.rect
@@ -121,17 +140,19 @@ def searchBlock(rtree: Rtree, block: RtreeBlock, searchType: int):
         for nodeSelected in rtree.RtreeData:
             for blockSelected in nodeSelected.blocks:
                 if blockSelected.data == data:
-                    return blockSelected.index, rtree.RtreeData.index
-
-        return 2
+                    indexPositions = [rtree.RtreeData.index, counter]
+                    return indexPositions
+                counter += counter
+        indexPositions = [None, None]
+        return indexPositions
 
     if searchType == 2:
 
         nodeSelected = rtree.RtreeRoot
         selectedBlock: RtreeBlock = None
         spaceDifference = MAX_VALUE
-
-        while nodeSelected.blocks[0].is_leaf == False:
+        
+        while nodeSelected.blocks[0].is_leaf() == False:
             for blockVar in nodeSelected.blocks:
                 x = blockVar.rect.spaceNeeded(rect)
                 if x < spaceDifference:
@@ -141,15 +162,20 @@ def searchBlock(rtree: Rtree, block: RtreeBlock, searchType: int):
             #parent node selected and checks if it is NULL    
             nodeSelected = selectedBlock.child
             if nodeSelected.blocks == []:
-                return 2
+                indexPositions = [None, None]
+                return indexPositions 
 
-        if nodeSelected.blocks[0].is_leaf == True:
-            for blockVar in nodeSelected:
+        if nodeSelected.blocks[0].is_leaf() == True:
+            for blockVar in nodeSelected.blocks:
                 if blockVar.rect == rect:
-                    return blockVar.index, selectedBlock.indexPosition
-            return 2
+                    indexPositions = [rtree.RtreeData.index(nodeSelected), counter]
+                    return indexPositions
+                counter += counter
+            indexPositions = [None, None]
+            return indexPositions
         else:
-            return 0
+            indexPositions = [None, None]
+            return indexPositions
 
 
 
@@ -165,12 +191,20 @@ def insertBlock(rtree: Rtree, block: RtreeBlock):
     while len(selectedNode.blocks) < MAX_ENTRIES:
         if selectedNode == rootNode:
             selectedNode.blocks.append(block)
+            print(len(selectedNode.blocks))
+            if len(selectedNode.blocks) == 1:
+                rtree.RtreeRoot = selectedNode
+                print("New root created")
             break
         quadraticSplit(rtree,selectedNode)
         selectedNode = selectedNode.parent.contained_node
 
     if selectedNode == rootNode and len(selectedNode.blocks) > MAX_ENTRIES:
         newRootCreation(rtree, selectedNode, block)
+        
+ 
+    print("New block added")
+    
 
     return
 
@@ -190,7 +224,7 @@ def newRootCreation(rtree: Rtree, rootNode: RtreeNode, block: RtreeBlock):
     firstBlockInNode1: RtreeBlock = None
     firstBlockInNode2: RtreeBlock = None
 
-    firstBlockInNode1 , firstBlockInNode2 = pickSeed(tmpInitialBlocks)
+    firstBlockInNode1 , firstBlockInNode2 = pickSeed(rootNode)
 
 
     #removing the blocks from the tmpInitialBlocks list and adding them to the new nodes
@@ -238,14 +272,14 @@ def chooseLeaf(rtree: Rtree, block: RtreeBlock):
     selectedNode: RtreeNode = None #or block?
 
     #First case that the root is still empty
-    if len(rtree.RtreeRoot.blocks) == 0:
+    if len(rtree.RtreeRoot.blocks) < MAX_ENTRIES:
         selectedNode = rtree.RtreeRoot
         return selectedNode
-    print('skata')
+    
     minSpaceNeeded = MAX_VALUE
     nodeSelected = rtree.RtreeRoot
     #while loop checks where we can place the new object in order to create the smallest rectangle.
-    while nodeSelected.blocks.is_leaf == False:
+    while nodeSelected.blocks[0].is_leaf() == False:
         for blockNumber in nodeSelected.blocks:
             x = blockNumber.rect.spaceNeeded(block.rect) 
             if x < minSpaceNeeded:
@@ -265,6 +299,7 @@ def chooseLeaf(rtree: Rtree, block: RtreeBlock):
 
 def quadraticSplit(rtree: Rtree, node: RtreeNode):
     
+    print("Entered Quadric split")
     #the blocks that are inside the node we want to split
     tmpInitialBlocks = node.blocks
     newNode: RtreeNode = None
@@ -276,7 +311,7 @@ def quadraticSplit(rtree: Rtree, node: RtreeNode):
     firstBlockInNode1: RtreeBlock = None
     firstBlockInNode2: RtreeBlock = None
 
-    firstBlockInNode1 , firstBlockInNode2 = pickSeed(tmpInitialBlocks)
+    firstBlockInNode1 , firstBlockInNode2 = pickSeed(node)
 
     tmpInitialBlocks.pop(tmpInitialBlocks.index(firstBlockInNode1))
     tmpInitialBlocks.pop(tmpInitialBlocks.index(firstBlockInNode2))

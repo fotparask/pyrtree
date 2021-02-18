@@ -92,8 +92,9 @@ def deleteBlock(rtree: Rtree, block: RtreeBlock):
     #finding in which node the block is located
     nodeLocation = 0
     blockLocation = 0
+    indexPositions = [nodeLocation,blockLocation]
 
-    blockLocation, nodeLocation = searchBlock(rtree, block, 2)
+    indexPositions = searchBlock(rtree, block, 2)
 
     rtree.RtreeData[nodeLocation].blocks.pop(blockLocation)
 
@@ -105,13 +106,16 @@ def deleteBlock(rtree: Rtree, block: RtreeBlock):
 # and the algorithm searches the blocks one by one to find it.
 #if searchType is 2, we are searching by rectange size, and we choose 
 #which node to search accordingly. 
-#id searchType is 0 searchBlock exits with 0 error code. The same happens if the root node is empty. 
+#if searchType is 0 searchBlock exits with 0 error code. The same happens if the root node is empty. 
 #searchBlock returns 2, if the value is not found.
 # Most times we will be using the 2nd method, the first is not recommended.
 def searchBlock(rtree: Rtree, block: RtreeBlock, searchType: int):
 
+    indexPositions = [0, 0]
+
     if searchType == 0 or rtree.RtreeRoot.blocks == []: 
-        return 0
+        indexPositions = [None, None]
+        return indexPositions
 
     data = block.data
     rect = block.rect
@@ -121,16 +125,17 @@ def searchBlock(rtree: Rtree, block: RtreeBlock, searchType: int):
         for nodeSelected in rtree.RtreeData:
             for blockSelected in nodeSelected.blocks:
                 if blockSelected.data == data:
-                    return blockSelected.index, rtree.RtreeData.index
-
-        return 2
+                    indexPositions = [rtree.RtreeData.index, blockSelected.index]
+                    return indexPositions
+        indexPositions = [None, None]
+        return indexPositions
 
     if searchType == 2:
 
         nodeSelected = rtree.RtreeRoot
         selectedBlock: RtreeBlock = None
         spaceDifference = MAX_VALUE
-
+        print("Skata")
         while nodeSelected.blocks[0].is_leaf == False:
             for blockVar in nodeSelected.blocks:
                 x = blockVar.rect.spaceNeeded(rect)
@@ -141,15 +146,19 @@ def searchBlock(rtree: Rtree, block: RtreeBlock, searchType: int):
             #parent node selected and checks if it is NULL    
             nodeSelected = selectedBlock.child
             if nodeSelected.blocks == []:
-                return 2
+                indexPositions = [None, None]
+                return indexPositions 
 
         if nodeSelected.blocks[0].is_leaf == True:
             for blockVar in nodeSelected:
                 if blockVar.rect == rect:
-                    return blockVar.index, selectedBlock.indexPosition
-            return 2
+                    indexPositions = [rtree.RtreeData.index, blockSelected.index]
+                    return indexPositions
+            indexPositions = [None, None]
+            return indexPositions
         else:
-            return 0
+            indexPositions = [None, None]
+            return indexPositions
 
 
 
