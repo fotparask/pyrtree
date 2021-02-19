@@ -1,7 +1,8 @@
 from rectangle import Rectangle
+import copy
 import sys
 
-MAX_ENTRIES = 2
+MAX_ENTRIES = 3
 MAX_VALUE = 488663658200000
 
 
@@ -10,7 +11,7 @@ class RtreeBlock():
     def __init__(self, rect: Rectangle, data: str, contained_node):
         self.rect = rect
         self.data = data
-        self.contained_node = None
+        self.contained_node = contained_node
         self.child = None
 
     def setContainedNode(self, node):
@@ -65,23 +66,16 @@ class Rtree():
         Rtree.RtreeData.append(RtreeNode)
     
     def deleteNode(self,nodeLocation: int):
-        position = nodeLocation
-        listLenght = len(self.RtreeData)
         self.RtreeData.pop(nodeLocation)
 
-
-    @classmethod
     def changeRoot(self, newRootNode: RtreeNode):
-        listLenght = len(self.RtreeData)
-        self.RtreeData[0].setIndexPosition(listLenght)
-        newRootNode.setIndexPosition(0)
-        oldRootNode = self.RtreeData[0]
-        Rtree.RtreeData.append(oldRootNode)
-        Rtree.RtreeData.insert(0, newRootNode)
+        oldRootNode = copy.deepcopy(self.RtreeRoot)
+        self.RtreeData[0] = newRootNode
+        self.RtreeData.append(oldRootNode)
+        self.RtreeRoot = newRootNode
 
-    @classmethod
-    def treeLength(cls):
-        pass
+    def treeLength(self):
+        return len(self.RtreeData)
 
 
 
@@ -187,77 +181,91 @@ def insertBlock(rtree: Rtree, block: RtreeBlock):
     selectedNode: RtreeNode = None
 
     selectedNode = chooseLeaf(rtree, block)
-    
-    while len(selectedNode.blocks) < MAX_ENTRIES:
-        if selectedNode == rootNode:
-            selectedNode.blocks.append(block)
-            print(len(selectedNode.blocks))
-            if len(selectedNode.blocks) == 1:
-                rtree.RtreeRoot = selectedNode
-                print("New root created")
-            break
-        quadraticSplit(rtree,selectedNode)
-        selectedNode = selectedNode.parent.contained_node
+
+    if len(selectedNode.blocks) < MAX_ENTRIES:
+        block.contained_node = selectedNode
+        selectedNode.blocks.append(block)
+        return
+    else:
+        selectedNode.blocks.append(block) 
+        while len(selectedNode.blocks) > MAX_ENTRIES:
+            if selectedNode == rtree.RtreeRoot:
+                break
+            block.contained_node = selectedNode
+            quadraticSplit(rtree,selectedNode)
+            selectedNode = selectedNode.parent.contained_node
+        
 
     if selectedNode == rootNode and len(selectedNode.blocks) > MAX_ENTRIES:
-        newRootCreation(rtree, selectedNode, block)
+        print("==============================================")
+        print("New root is going to be created")
+        print("==============================================")
+        newRootCreation(rtree, block)
         
- 
     print("New block added")
     
-
     return
 
     
 
-def newRootCreation(rtree: Rtree, rootNode: RtreeNode, block: RtreeBlock):
+def newRootCreation(rtree: Rtree, block: RtreeBlock):
 
     #the blocks that are inside the node we want to split
-    tmpInitialBlocks = rootNode.blocks
-    newNode: RtreeNode = None
+    tmpInitialNode: RtreeBlock = None
+    tmpInitialNode = copy.deepcopy(rtree.RtreeRoot)
+    tmpInitialNode.blocks.append(block)
+    newNode = RtreeNode(None,0,0)
     counter = 0
 
     #emptying the existing root to reform it
-    for counter in range(MAX_ENTRIES - 1):
-        rootNode.blocks[counter] = None
+    rtree.RtreeRoot.blocks.clear()
 
     firstBlockInNode1: RtreeBlock = None
     firstBlockInNode2: RtreeBlock = None
 
-    firstBlockInNode1 , firstBlockInNode2 = pickSeed(rootNode)
-
+    tempBlock1 , tempBlock2 = pickSeed(tmpInitialNode)
+    firstBlockInNode1 = copy.deepcopy(tempBlock1)
+    firstBlockInNode2 = copy.deepcopy(tempBlock2)
 
     #removing the blocks from the tmpInitialBlocks list and adding them to the new nodes
-    tmpInitialBlocks.pop(tmpInitialBlocks.index(firstBlockInNode1))
-    tmpInitialBlocks.pop(tmpInitialBlocks.index(firstBlockInNode2))
-    rootNode.blocks.append(firstBlockInNode1)
+    tmpInitialNode.blocks.remove(tempBlock1)
+    tmpInitialNode.blocks.remove(tempBlock2)
+
+    firstBlockInNode1.contained_node = rtree.RtreeRoot
+    firstBlockInNode2.contained_node = newNode
+    rtree.RtreeRoot.blocks.append(firstBlockInNode1)
     newNode.blocks.append(firstBlockInNode2)
 
-
     #pickNext Stage.
-    x = MAX_ENTRIES - 3
-    if x < 0: x = 0
-    for counter in range(x):
-        nodeTobePlaced: RtreeNode = None
-        nodeTobePlaced = pickNext(rootNode, newNode, tmpInitialBlocks[counter])
-        if nodeTobePlaced ==  rootNode:
-            rootNode.blocks.append(tmpInitialBlocks[counter])
-        else:
-            newNode.blocks.append(tmpInitialBlocks[counter])
+    x = MAX_ENTRIES - 1
+    if x > 1:
+        for counter in range(x):
+            nodeTobePlaced: RtreeNode = None
+            nodeTobePlaced = pickNext(rtree.RtreeRoot, newNode, tmpInitialNode.blocks[counter])
+            if nodeTobePlaced ==  rtree.RtreeRoot:
+                tmpInitialNode.blocks[counter].contained_node = rtree.RtreeRoot
+                rtree.RtreeRoot.blocks.append(tmpInitialNode.blocks[counter])
+            else:
+                tmpInitialNode.blocks[counter].contained_node = newNode
+                newNode.blocks.append(tmpInitialNode.blocks[counter])
 
 
 
     #creating new root node
-    newRootNode: RtreeNode(None, 0, 0)
-    newRect: Rectangle(0,0,0,0)
-    newBlock: RtreeBlock(newRect,"blockName", newRootNode)
-    newBlock2: RtreeBlock(newRect,"blockName", newRootNode)
-    newRootNode.blocks.append(newBlock)
+    newRootNode = RtreeNode(None, 0, 0)
+    newRect = Rectangle(0,0,0,0)
+    newBlock1 = RtreeBlock(newRect,"BlockRootContainer", newRootNode)
+    newBlock2 = RtreeBlock(newRect,"BlockRootContainer", newRootNode)
+    newBlock1.child = rtree.RtreeRoot
+    newBlock2.child = newNode
+    newRootNode.blocks.append(newBlock1)
     newRootNode.blocks.append(newBlock2)
 
-    rootNode.parent = newRootNode.blocks[0]
+    rtree.RtreeRoot.parent = newRootNode.blocks[0]
     newNode.parent = newRootNode.blocks[1]
-    fixParent(rootNode)
+    rtree.addNode(newNode)
+    
+    fixParent(rtree.RtreeRoot)
     fixParent(newNode)
 
     rtree.changeRoot(newRootNode)
@@ -269,22 +277,21 @@ def newRootCreation(rtree: Rtree, rootNode: RtreeNode, block: RtreeBlock):
 
 def chooseLeaf(rtree: Rtree, block: RtreeBlock):
 
-    selectedNode: RtreeNode = None #or block?
-
+    selectedNode: RtreeNode = None 
     #First case that the root is still empty
-    if len(rtree.RtreeRoot.blocks) < MAX_ENTRIES:
+    if len(rtree.RtreeRoot.blocks) == 0:
         selectedNode = rtree.RtreeRoot
         return selectedNode
     
     minSpaceNeeded = MAX_VALUE
-    nodeSelected = rtree.RtreeRoot
+    selectedNode = rtree.RtreeRoot
     #while loop checks where we can place the new object in order to create the smallest rectangle.
-    while nodeSelected.blocks[0].is_leaf() == False:
-        for blockNumber in nodeSelected.blocks:
+    while selectedNode.blocks[0].is_leaf() == False:
+        for blockNumber in selectedNode.blocks:
             x = blockNumber.rect.spaceNeeded(block.rect) 
             if x < minSpaceNeeded:
                 minSpaceNeeded = x
-                nodeSelected = blockNumber.child
+                selectedNode = blockNumber.child
 
     return selectedNode
 
@@ -301,38 +308,52 @@ def quadraticSplit(rtree: Rtree, node: RtreeNode):
     
     print("Entered Quadric split")
     #the blocks that are inside the node we want to split
-    tmpInitialBlocks = node.blocks
-    newNode: RtreeNode = None
+    tmpInitialNode: RtreeBlock = None
+    tmpInitialNode = copy.deepcopy(node)
+    newNode = RtreeNode(None,0,0)
+    nodeTobePlaced = RtreeNode(None,0,0)
+    counter = 0
 
-    #emptying the existing node to reform it
-    for counter in range(MAX_ENTRIES - 1):
-        node.blocks[counter] = None
+
+    #emptying the existing root to reform it
+    node.blocks.clear()
 
     firstBlockInNode1: RtreeBlock = None
     firstBlockInNode2: RtreeBlock = None
 
-    firstBlockInNode1 , firstBlockInNode2 = pickSeed(node)
+    tempBlock1 , tempBlock2 = pickSeed(tmpInitialNode)
+    firstBlockInNode1 = copy.deepcopy(tempBlock1)
+    firstBlockInNode2 = copy.deepcopy(tempBlock2)
 
-    tmpInitialBlocks.pop(tmpInitialBlocks.index(firstBlockInNode1))
-    tmpInitialBlocks.pop(tmpInitialBlocks.index(firstBlockInNode2))
+    #removing the blocks from the tmpInitialBlocks list and adding them to the new nodes
+    tmpInitialNode.blocks.remove(tempBlock1)
+    tmpInitialNode.blocks.remove(tempBlock2)
 
-    x = MAX_ENTRIES - 3
-    if x < 0: x = 0
-    for counter in range(x):
-        nodeTobePlaced: RtreeNode = None
-        nodeTobePlaced = pickNext(node, newNode, tmpInitialBlocks[counter])
-        if nodeTobePlaced ==  node:
-            node.blocks.append(tmpInitialBlocks[counter])
-        else:
-            newNode.blocks.append(tmpInitialBlocks[counter])
+    node.blocks.append(firstBlockInNode1)
+    newNode.blocks.append(firstBlockInNode2)
+
+ 
+    #x are the blocks remaning in tmpInitialBlocks node. 
+    #if MAX_ENTRIES is 3 for example, x will be 2, and "in range(x)"" will repeat 2 times.
+    x = MAX_ENTRIES - 1
+    if x > 1:
+        for counter in range(x): 
+            nodeTobePlaced = pickNext(node, newNode, tmpInitialNode.blocks[counter])
+            if nodeTobePlaced == node:
+                node.blocks.append(tmpInitialNode.blocks[counter])
+            else:
+                newNode.blocks.append(tmpInitialNode.blocks[counter])
 
 
     fixParent(node)
 
-    newRect: Rectangle(0,0,0,0)
-    newBlock: RtreeBlock(newRect,"blockName", node.parent.contained_node)
+    newRect = Rectangle(0,0,0,0)
+    newBlock = RtreeBlock(newRect,"BlockNodeContainer", node.parent.contained_node)
+    newBlock.child = newNode
+    newNode.parent = newBlock
     newBlock.rect = findParentCoveringRect(newNode)
 
+    print(node.blocks[0].data)
     node.parent.contained_node.blocks.append(newBlock) 
 
     rtree.addNode(newNode)
@@ -351,24 +372,22 @@ def fixParent(node: RtreeNode):
 
 def findParentCoveringRect(node: RtreeNode):
     
-    block: RtreeBlock = None
     counter = 0
     min_x = MAX_VALUE
     max_x = 0
     min_y = MAX_VALUE
     max_y = 0
     edgedValues = [min_x, max_x, min_y, max_y]
+    try:
+        while counter < MAX_ENTRIES and node.blocks[counter]:
+            min_x, max_x, min_y, max_y = node.blocks[counter].rect.findEdgedValues(edgedValues)
+            edgedValues = [min_x, max_x, min_y, max_y]
+            counter += 1
+    except IndexError:
+        pass
+    newRect = Rectangle(min_x, max_x, min_y, max_y)
 
-
-    while node.blocks[counter] != None and counter < MAX_ENTRIES:
-        
-        min_x, max_x, min_y, max_y = node.blocks[counter].rect.findEdgedValues(edgedValues)
-        edgedValues = [min_x, max_x, min_y, max_y]
-        counter += 1
-
-    block.rect.__init__(min_x, max_x, min_y, max_y)
-
-    return block.rect
+    return newRect
 
 
 
