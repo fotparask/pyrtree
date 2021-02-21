@@ -1,4 +1,4 @@
-class Rectangle:
+class Cuboid:
 
     def __init__ (self, x_min: float, x_max: float , y_min:float, y_max: float, z_min:float, z_max: float):
         self.x_min = x_min
@@ -55,3 +55,5 @@ class Rectangle:
         z_diff = z_mix_diff + z_max_diff
 
         return x_diff + y_diff + z_diff
+
+

@@ -1,4 +1,4 @@
-class Rectangle:
+class Rectang:
 
     def __init__ (self, x_min: float, x_max: float , y_min:float, y_max: float):
         self.x_min = x_min
